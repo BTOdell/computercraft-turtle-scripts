@@ -7,10 +7,21 @@ local movement = require("lib.movement")
 local dig = require("lib.dig")
 local inventory = require("lib.inventory")
 
+-- Verify this is a turtle
+if not turtle then
+	print("Error: Requires turtle")
+	return
+end
+
 -- Static Variables
 
 local torchID = "minecraft:torch"
-local breadcrumbID = "minecraft:cobblestone" -- a breadcrumb must not be affected by water (so no torches)
+
+-- Breadcumbs must not be affected by water (so no torches)
+local breadcrumbIDs = Set({
+	"minecraft:cobbled_deepslate",
+	"minecraft:cobblestone"
+})
 
 local chests = Set({
 	"minecraft:chest",
@@ -27,29 +38,44 @@ local cancelTop = Set({
 	"minecraft:stone_slab"
 }) .. cancelSides
 
-local filler = Set({
-	"minecraft:cobblestone", -- prioritize cobblestone because it's also used as a breadcrumb
+local filler = Set(breadcrumbIDs) .. Set({
 	"minecraft:dirt",
-	"minecraft:grass",
-	"minecraft:stone",
-	"minecraft:netherrack",
-	"projectred-exploration:stone"
+	"minecraft:netherrack"
 })
 
 local trash = Set({
+	"minecraft:grass",
+	"minecraft:stone",
 	"minecraft:sand",
 	"minecraft:sandstone",
 	"minecraft:gravel",
 	"minecraft:stonebrick",
 	"minecraft:end_bricks",
-	"minecraft:mycelium",
-	"projectx:xycronium_crystal", -- handles all colors of crystals
-	"minecraft:rotten_flesh"
+    "minecraft:mycelium",
+	"minecraft:andesite",
+    "minecraft:dripstone_block",
+	"minecraft:diorite",
+	"minecraft:andesite",
+	"minecraft:smooth_basalt",
+    "minecraft:tuff",
+	"minecraft:granite",
+	"minecraft:deepslate",
+    "minecraft:rotten_flesh",
+    -- From custom mods
+	"create:ochrum",
+	"create:scoria",
+	"create:crimsite",
+	"create:veridium",
+	"create:limestone",
+	"projectred-exploration:stone",
+	"projectx:xycronium_crystal" -- handles all colors of crystals
 }) .. filler
 
 local badblocks = Set({
-	"minecraft:bedrock",
 	torchID,
+    "minecraft:bedrock",
+	"minecraft:water",
+	"minecraft:flowing_water",
 	"minecraft:lava",
 	"minecraft:stone_stairs",
 	"minecraft:flowing_lava",
@@ -57,9 +83,7 @@ local badblocks = Set({
 	"buildcraftenergy:fluid_block_oil_heat_0",
 	"buildcraftenergy:fluid_block_oil_heat_1",
 	"buildcraftenergy:fluid_block_oil_heat_2",
-	"thermalfoundation:fluid_crude_oil",
-	"minecraft:water",
-	"minecraft:flowing_water"
+	"thermalfoundation:fluid_crude_oil"
 }) .. trash .. chests
 
 -- Welcome messages
@@ -83,7 +107,7 @@ if args.count(targs) < 4 then
 	textutils.pagedPrint("Instructions:")
 	textutils.pagedPrint("- Place turtle facing down main tunnel on the side it should mine.")
 	textutils.pagedPrint("- A chest should be directly behind the turtle.")
-	textutils.pagedPrint("- The turtle will use " .. breadcrumbID .. " to mark each branching tunnel as complete.")
+	textutils.pagedPrint("- The turtle will use " .. tostring(breadcrumbIDs) .. " to mark each branching tunnel as complete.")
 	return
 end
 
@@ -168,7 +192,7 @@ function checkFuel()
 end
 
 function getFuel()
-	print("Please insert more fuel into slot " .. FUEL_SLOT)
+	print("Please insert more fuel into slot ", FUEL_SLOT)
 	local oldSelection = turtle.getSelectedSlot()
 	repeat
 		sleep(1)
@@ -373,7 +397,7 @@ end
 -- Turtle should be facing into the tunnel before checking for the breadcrumb
 function hasBreadcrumb()
 	local check, data = turtle.inspect()
-	return check and data.name == breadcrumbID
+	return check and breadcrumbIDs[data.name]
 end
 
 -- Turtle should be facing into the tunnel
@@ -388,7 +412,7 @@ function digBranch()
 		turtle.digUp()
 
 		--Allows for the user to check the fuel level of the turtle while mine is active
-		print("Fuel level: " .. ((turtle.getFuelLevel()/turtle.getFuelLimit()) * 100) .. " %")
+		print("Fuel level: ", ((turtle.getFuelLevel()/turtle.getFuelLimit()) * 100), " %")
 
 		processValuables(false)
 
@@ -428,7 +452,7 @@ function digBranch()
 	dig.down(true)
 
 	-- Place breadcrumb on first block of tunnel
-	if not inventory.selectID(breadcrumbID) then
+	if not inventory.selectIDs(breadcrumbIDs) then
 		return false
 	end
 	-- Try 5 times to place breadcrumb
@@ -500,7 +524,7 @@ repeat
 	if not hasBreadcrumb() then
 		-- If no breadcrumb, then dig branch tunnel
 		if not digBranch() then
-			print("Error: No " .. breadcrumbID .. " available to place breadcrumb!")
+			print("Error: No ", breadcrumbIDs, " available to place breadcrumb!")
 			return
 		end
 		if useChest then
